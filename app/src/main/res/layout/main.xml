@@ -1,11 +1,30 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center">
+    android:orientation="vertical">
 
-    <TextView
-        android:text="@string/hello_world"
-        android:layout_width="wrap_content"
+    <EditText
+        android:id="@+id/accounts"
+        android:hint="accounts"
+        android:layout_width="match_parent"
+        android:layout_height="100dp" />
+    
+    <EditText
+        android:id="@+id/commName"
+        android:hint="comm name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+    
+    <EditText
+        android:id="@+id/message"
+        android:hint="message"
+        android:layout_width="match_parent"
+        android:layout_height="100dp" />
+    
+    <Button
+        android:id="@+id/btn_begin"
+        android:text="begin"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
 </LinearLayout>
