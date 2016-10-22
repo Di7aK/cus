@@ -14,7 +14,7 @@ public class PaginationData {
             if(json.has("count")) result.count = json.getInt("count");
             if(json.has("current_page")) result.currentPage = json.getInt("current_page");
             if(json.has("last_page")) result.lastPage = json.getInt("last_page");
-            if(json.has("items_n_page")) result.itemsOnPage = json.getInt("items_on_page");
+            if(json.has("items_on_page")) result.itemsOnPage = json.getInt("items_on_page");
         } catch(Exception e) {
             throw new SpacesException(-2);
         }
