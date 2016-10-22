@@ -4,15 +4,28 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
 
+import com.di7ak.kolyaloh.anticaptcha.Anticaptcha;
+import com.di7ak.kolyaloh.anticaptcha.AnticaptchaException;
+import com.di7ak.nn.Layer;
+import com.di7ak.spaces.api.Auth;
+import com.di7ak.spaces.api.Comm;
+import com.di7ak.spaces.api.Mail;
+import com.di7ak.spaces.api.Session;
+import com.di7ak.spaces.api.SpacesException;
+
+import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity implements View.OnClickListener,
-        DialogInterface.OnClickListener {
+DialogInterface.OnClickListener {
     List<Session> sessions;
     ProgressDialog progress;
     boolean canceled;
@@ -24,12 +37,43 @@ public class MainActivity extends Activity implements View.OnClickListener,
     int currentUser;
     int totalSended;
     Comm.CommResult users;
+    Layer layer;
+    String captcha;
+    String captchaUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         findViewById(R.id.btn_begin).setOnClickListener(this);
+
+        loadLayer();
+    }
+
+    private void loadLayer() {
+        progress = new ProgressDialog(this);
+        progress.setTitle("wait");
+        progress.setMessage("initializing anticaptcha");
+        progress.show();
+        new Thread(new Runnable() {
+
+                @Override
+                public void run() {
+                    layer = new Layer(12 * 18);
+                    try {
+                        layer.load(getAssets().open("lol.ns"));
+                        runOnUiThread(new Runnable() {
+
+                                @Override
+                                public void run() {
+                                    progress.hide();
+                                }
+                            });
+                    } catch (IOException e) {
+                        showError("failed load layer data");
+                    }
+                }
+            }).start();
     }
 
     @Override
@@ -106,12 +150,12 @@ public class MainActivity extends Activity implements View.OnClickListener,
 
     private void nextMessage() {
         if (canceled) return;
-        setMessage("getting next user");
         new Thread(new Runnable() {
 
                 @Override
                 public void run() {
                     if (users == null) {
+                        setMessage("getting users");
                         try {
                             users = comm.getUsers(1);
                         } catch (SpacesException e) {
@@ -122,6 +166,7 @@ public class MainActivity extends Activity implements View.OnClickListener,
                     if (currentUser == users.pagination.itemsOnPage) {
                         if (users.pagination.currentPage < users.pagination.lastPage) {
                             try {
+                                setMessage("getting next users");
                                 users = comm.getUsers(users.pagination.currentPage + 1);
                                 currentUser = 0;
                             } catch (SpacesException e) {
@@ -135,21 +180,35 @@ public class MainActivity extends Activity implements View.OnClickListener,
                     }
 
                     if (currentSession >= sessions.size()) {
-                        showError("need accounts");
+                        if (captchaUrl != null) {
+                            try {
+                                currentSession = 0;
+                                setMessage("handling captcha");
+                                URL url = new URL(captchaUrl);
+                                Bitmap image = BitmapFactory.decodeStream(url.openConnection().getInputStream());
+                                captcha = Anticaptcha.handle(image, layer);
+                                Thread.sleep(100);
+                            } catch (AnticaptchaException e) {
+                                
+                            } catch (Exception e) {
+                                
+                            }
+                        }
                     }
                     try {
                         setMessage("sending to " + users.users.get(currentUser).name);
-                        Mail.sendMessage(sessions.get(currentSession), users.users.get(currentUser), message);
+                        Mail.sendMessage(sessions.get(currentSession), users.users.get(currentUser), message, captcha);
                         currentUser ++;
                         totalSended ++;
                         try {
-                            Thread.sleep(3000);
+                            Thread.sleep(200);
                         } catch (InterruptedException e) {}
                         nextMessage();
                     } catch (SpacesException e) {
-                        if (e.code == 1) {
+                        if (e.code == 1 || e.code == 4) {
                             sessions.get(currentSession).captchaTime = System.currentTimeMillis();
                             currentSession ++;
+                            captchaUrl = e.captchaUrl;
                         } else if (e.code != -1) currentUser ++;
                         nextMessage();
                     }

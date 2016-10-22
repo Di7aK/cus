@@ -1,4 +1,4 @@
-package com.di7ak.cus;
+package com.di7ak.spaces.api;
 
 import android.net.Uri;
 
@@ -12,17 +12,19 @@ import java.net.URL;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class Auth {
-
-    public static Session login(String login, String password) throws SpacesException {
-        Session session = new Session();
+public class Mail {
+    
+    public static void sendMessage(Session session, UserData user, String message, String captcha) throws SpacesException {
         StringBuilder args = new StringBuilder();
-        args.append("method=").append("login")
-            .append("&login=").append(Uri.encode(login))
-            .append("&password=").append(Uri.encode(password));
+        args.append("method=").append("sendMessage")
+            .append("&user=").append(Uri.encode(user.name))
+            .append("&sid=").append(Uri.encode(session.sid))
+            .append("&CK=").append(Uri.encode(session.ck))
+            .append("&code=").append(Uri.encode(captcha))
+            .append("&texttT=").append(Uri.encode(message));
 
         try {
-            HttpURLConnection con = (HttpURLConnection) new URL("http://spaces.ru/api/auth/").openConnection();
+            HttpURLConnection con = (HttpURLConnection) new URL("http://spaces.ru/neoapi/mail/").openConnection();
 
             con.setRequestMethod("POST");
             con.setDoOutput(true);
@@ -44,17 +46,15 @@ public class Auth {
 
             JSONObject json = new JSONObject(response.toString());
             int code = json.getInt("code");
-            if (code != 0) throw new SpacesException(code);
-            json = json.getJSONObject("attributes");
-            session.sid = json.getString("sid");
-            session.ck = json.getString("CK");
-            session.login = json.getString("name");
+            if(code == 1 || code == 4) {
+                String captchaUrl = json.getString("captcha_url");
+                throw new SpacesException(code, captchaUrl);
+            } else if (code != 0) throw new SpacesException(code);
         } catch (IOException e) {
             throw new SpacesException(-1);
         } catch (JSONException e) {
             throw new SpacesException(-2);
         }
-        return session;
     }
-
+    
 }

@@ -1,4 +1,4 @@
-package com.di7ak.cus;
+package com.di7ak.spaces.api;
 
 public class Session {
     public String sid, login, ck, avatar;

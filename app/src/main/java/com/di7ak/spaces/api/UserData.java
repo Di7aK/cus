@@ -1,4 +1,4 @@
-package com.di7ak.cus;
+package com.di7ak.spaces.api;
 
 import org.json.JSONException;
 import org.json.JSONObject;
