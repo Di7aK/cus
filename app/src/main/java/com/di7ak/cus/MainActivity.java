@@ -39,7 +39,6 @@ DialogInterface.OnClickListener {
     Comm.CommResult users;
     Layer layer;
     String captcha;
-    String captchaUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +53,7 @@ DialogInterface.OnClickListener {
         progress = new ProgressDialog(this);
         progress.setTitle("wait");
         progress.setMessage("initializing anticaptcha");
+        progress.setCancelable(false);
         progress.show();
         new Thread(new Runnable() {
 
@@ -87,6 +87,7 @@ DialogInterface.OnClickListener {
         sessions = new ArrayList<Session>();
         canceled = false;
         totalSended = 0;
+        users = null;
 
         accounts = ((EditText)findViewById(R.id.accounts)).getText().toString().split("\n");
         commName = ((EditText)findViewById(R.id.commName)).getText().toString();
@@ -158,6 +159,7 @@ DialogInterface.OnClickListener {
                         setMessage("getting users");
                         try {
                             users = comm.getUsers(1);
+                            currentUser = 0;
                         } catch (SpacesException e) {
                             nextMessage();
                             return;
@@ -180,20 +182,8 @@ DialogInterface.OnClickListener {
                     }
 
                     if (currentSession >= sessions.size()) {
-                        if (captchaUrl != null) {
-                            try {
-                                currentSession = 0;
-                                setMessage("handling captcha");
-                                URL url = new URL(captchaUrl);
-                                Bitmap image = BitmapFactory.decodeStream(url.openConnection().getInputStream());
-                                captcha = Anticaptcha.handle(image, layer);
-                                Thread.sleep(100);
-                            } catch (AnticaptchaException e) {
-                                
-                            } catch (Exception e) {
-                                
-                            }
-                        }
+                        showError("completed");
+                        return;
                     }
                     try {
                         setMessage("sending to " + users.users.get(currentUser).name);
@@ -206,10 +196,23 @@ DialogInterface.OnClickListener {
                         nextMessage();
                     } catch (SpacesException e) {
                         if (e.code == 1 || e.code == 4) {
-                            sessions.get(currentSession).captchaTime = System.currentTimeMillis();
+                            try {
+                                setMessage("handling captcha");
+                                URL url = new URL(e.captchaUrl);
+                                Bitmap image = BitmapFactory.decodeStream(url.openConnection().getInputStream());
+                                captcha = Anticaptcha.handle(image, layer);
+                                Thread.sleep(300);
+                            } catch (AnticaptchaException ae) {
+
+                            } catch (Exception ae) {
+
+                            }
+                        } else if(e.code == 2003 || e.code == 2009 || e.code == 1008) {
                             currentSession ++;
-                            captchaUrl = e.captchaUrl;
-                        } else if (e.code != -1) currentUser ++;
+                        } else if (e.code != -1) {
+                            android.util.Log.d("lol", "code: " + e.code);
+                            currentUser ++;
+                        }
                         nextMessage();
                     }
                 }
@@ -222,7 +225,7 @@ DialogInterface.OnClickListener {
                 @Override
                 public void run() {
                     if (progress != null && progress.isShowing()) {
-                        progress.setMessage(message);
+                        progress.setMessage(message + ", total sended: " + totalSended);
                     }
                 }
             });
@@ -239,7 +242,7 @@ DialogInterface.OnClickListener {
 
                     new AlertDialog.Builder(MainActivity.this)
                         .setTitle("error")
-                        .setMessage(error)
+                        .setMessage(error + ", total sended: " + totalSended)
                         .show();
                 }
             });
